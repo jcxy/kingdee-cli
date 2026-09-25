@@ -1,0 +1,37 @@
+# kingdee-cli 配置示例
+# 复制到 ~/.kingdee-cli/config.yaml 后填入真实凭据（或运行 kd config init 生成模板）。
+# 真实凭据不要提交到任何仓库；CI/无头场景可用 KD_* 环境变量覆盖（见 README「环境变量」）。
+#
+# 字段说明：
+#   server-url   K3Cloud 站点地址，必须以 / 结尾
+#   acct-id      账套 ID（金蝶管理后台可查）
+#   auth         认证模式：app（第三方应用授权，推荐）| password（账号密码）
+#   username     集成用户名（app 模式也必填——以该用户身份登录）
+#   app-id / app-secret  auth=app 时必填（金蝶「第三方应用」许可）
+#   password     auth=password 时必填
+#   lcid         语言，2052 = 简体中文
+#   mode         readonly 只允许查询（写命令 exit 6）| readwrite 全部命令
+
+default-profile: dev
+
+profiles:
+  # 第三方应用授权（推荐：免明文密码、可独立吊销）
+  dev:
+    server-url: 'http://your-server:8080/k3cloud/'
+    acct-id: 'your-acct-id'
+    auth: app
+    username: integration-user
+    app-id: your-app-id
+    app-secret: your-app-secret
+    lcid: 2052
+    mode: readwrite
+
+  # 账号密码 + 只读：适合报表/查询类 agent，写命令被物理拒绝
+  report-readonly:
+    server-url: 'http://your-server:8080/k3cloud/'
+    acct-id: 'your-acct-id'
+    auth: password
+    username: report-user
+    password: your-password
+    lcid: 2052
+    mode: readonly
