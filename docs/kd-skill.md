@@ -20,7 +20,7 @@ exit code、读 `error.hints`，即可决定下一步，无需人类介入。
 | 2 | 参数/配置错误 | 读 error.message 修正参数 |
 | 3 | 认证失败 | 让用户 `kd config test` 检查凭据，不要盲目重试 |
 | 4 | 金蝶业务拒绝（状态不允许/被锁定） | 读 hints；`kd view` 核对单据状态后再定策略 |
-| 5 | 网络/超时，**状态未知** | 重试写操作前必须先查询核实 |
+| 5 | 网络/超时，**状态未知** | 重试写操作前必须先查询核实；报「N 秒内未响应」且站点写慢（如出库单删除库存回滚）时，用 `--timeout 120`/`KD_TIMEOUT`/profile `timeout` 调大 |
 | 6 | readonly 拒绝写 | 改用 readwrite profile 或向用户申请权限 |
 | 7 | 达安全上限（data 带已取得部分） | 缩小 filter 或显式调高上限 |
 

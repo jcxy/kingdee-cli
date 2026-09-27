@@ -53,6 +53,7 @@ kd query-json --form sales-order --fields "FBillNo,FDate,FDocumentStatus" --limi
 | `auth` | `app`（默认，需 app-id/app-secret/username）\| `password`（需 username/password） |
 | `lcid` | 语言，2052 = 简体中文 |
 | `mode` | `readwrite`（默认）\| `readonly`——readonly 下所有写命令 exit 6 拒绝 |
+| `timeout` | 单请求超时秒数（默认 30）；慢站点调大，如出库单删除涉及库存回滚常超 30 秒（也可 `KD_TIMEOUT` 环境变量或 `--timeout` 临时覆盖） |
 
 多 profile 场景用 `--profile <name>` 选择，或 `default-profile` 指定默认。
 `kd config list` 查看全部 profile（凭据打码），`kd config test` 验证连通。
@@ -204,7 +205,7 @@ chains:
 | --- | --- |
 | exit 3 认证失败 | `kd config test` 核对凭据；app 模式确认第三方应用已授权集成用户；acct-id 是否为本账套 |
 | exit 4 业务拒绝 | 看 `error.hints` 与金蝶错误文案；用 `kd view` 核对单据当前状态（是否已审核/已锁定） |
-| exit 5 网络错误 | **写操作状态未知**——恢复连通后先 `kd query`/`kd view` 核实，再决定重试 |
+| exit 5 网络错误 | **写操作状态未知**——恢复连通后先 `kd query`/`kd view` 核实，再决定重试；若报「N 秒内未响应」且站点写操作确实慢（如出库单删除的库存回滚），用 `--timeout 120`/`KD_TIMEOUT`/profile `timeout` 调大后重试 |
 | exit 6 readonly | 当前 profile 是只读模式；换 readwrite profile 或 `--mode readwrite` 临时覆盖 |
 | exit 7 达上限 | 结果比预期大：缩小 `--filter` 范围，或显式调高 `--max`/`--max-count` |
 | 查询字段为空 | `kd metadata --form <f>` 确认字段 key 拼写；关联字段用 `FKey.FSubKey` 形态 |

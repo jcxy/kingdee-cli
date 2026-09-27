@@ -47,6 +47,8 @@ export interface StubServer {
     | null;
   /** View 完整响应体（含 Result 信封），可任意构造（如 { Result: null }） */
   viewResponse: Record<string, unknown> | null;
+  /** 慢响应模拟（毫秒）：验证客户端超时与 --timeout 调大 */
+  slowMs: number;
   /** QueryBusinessInfo 完整响应体（含 Result 信封），可任意构造 */
   metadataResponse: Record<string, unknown> | null;
   /** 写端点（Save/Submit/Audit/UnAudit/Delete/ExecuteOperation/Push）完整响应体 */
@@ -71,6 +73,7 @@ export function startStubServer(): Promise<StubServer> {
     writeErrors: null,
     queryRowsByForm: null,
     queryFn: null,
+    slowMs: 0,
     queryRows: [
       [100001, 'XSDD0001'],
       [100002, 'XSDD0002'],
@@ -140,8 +143,15 @@ export function startStubServer(): Promise<StubServer> {
   }
 
   function respondBusinessSuccess(res: http.ServerResponse, payload: unknown): void {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(payload));
+    const send = () => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(payload));
+    };
+    if (stub.slowMs > 0) {
+      setTimeout(send, stub.slowMs);
+      return;
+    }
+    send();
   }
 
   /** DynamicFormService 端点统一路由：失败剧本优先；成功载荷为 null 也视为业务失败 */

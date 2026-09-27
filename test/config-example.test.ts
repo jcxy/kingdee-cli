@@ -23,6 +23,7 @@ const SCHEMA_KEYS = [
   'app-secret',
   'lcid',
   'mode',
+  'timeout',
 ] as const;
 
 function loadExample(): AppConfig {

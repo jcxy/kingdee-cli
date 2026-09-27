@@ -1,6 +1,6 @@
 {
   "name": "@cvtoolman/kingdee-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "agent 优先的金蝶云星空 K3Cloud 命令行工具",
   "type": "module",
   "repository": {

@@ -18,6 +18,8 @@ export interface Profile {
   'app-secret'?: string;
   lcid?: number;
   mode?: AccessMode;
+  /** 单请求超时秒数（默认 30）；慢站点（出库单删除涉及库存回滚）建议调大 */
+  timeout?: number;
 }
 
 export interface AppConfig {
@@ -100,7 +102,7 @@ export function resolveProfile(nameOverride?: string): { name: string; profile: 
   // （保留 CI 场景：纯 KD_* 环境变量即可运行，无需文件里存在同名 profile）
   const hasEnvOverride = [
     'KD_SERVER_URL', 'KD_ACCT_ID', 'KD_AUTH', 'KD_USERNAME', 'KD_PASSWORD',
-    'KD_APP_ID', 'KD_APP_SECRET', 'KD_LCID', 'KD_MODE',
+    'KD_APP_ID', 'KD_APP_SECRET', 'KD_LCID', 'KD_MODE', 'KD_TIMEOUT',
   ].some((k) => process.env[k] !== undefined);
   if (loaded && !(name in loaded.config.profiles) && !hasEnvOverride) {
     throw new ConfigError(
@@ -120,6 +122,7 @@ export function resolveProfile(nameOverride?: string): { name: string; profile: 
     'app-secret': env('APP_SECRET') ?? base['app-secret'],
     lcid: env('LCID') ? Number(env('LCID')) : base.lcid ?? 2052,
     mode: (env('MODE') as AccessMode) ?? base.mode ?? 'readwrite',
+    timeout: env('TIMEOUT') ? Number(env('TIMEOUT')) : base.timeout,
   };
 
   validateProfile(name, profile);
@@ -140,6 +143,9 @@ export function validateProfile(name: string, p: Profile): void {
     if (!p.password) errors.push('auth=password 需要 password（KD_PASSWORD）');
   } else {
     errors.push(`未知 auth 模式: ${String(p.auth)}（支持 app | password）`);
+  }
+  if (p.timeout !== undefined && (!Number.isInteger(p.timeout) || p.timeout <= 0)) {
+    errors.push(`timeout 必须是正整数秒（KD_TIMEOUT），收到: ${String(p.timeout)}`);
   }
   if (errors.length > 0) {
     throw new ConfigError(`profile "${name}" 配置无效:\n  - ${errors.join('\n  - ')}`);
@@ -166,6 +172,7 @@ export function listProfiles(): {
     'app-secret': p['app-secret'] ? '******' : undefined,
     lcid: p.lcid,
     mode: p.mode,
+    timeout: p.timeout,
     default: name === loaded.config['default-profile'],
   }));
   return {

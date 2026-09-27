@@ -27,11 +27,13 @@ profiles:
     mode: readwrite
 
   # 账号密码 + 只读：适合报表/查询类 agent，写命令被物理拒绝
+  # timeout 调大示例：慢站点（出库单删除涉及库存回滚）单请求可能超过默认 30 秒
   report-readonly:
     server-url: 'http://your-server:8080/k3cloud/'
     acct-id: 'your-acct-id'
     auth: password
     username: report-user
+    timeout: 120
     password: your-password
     lcid: 2052
     mode: readonly

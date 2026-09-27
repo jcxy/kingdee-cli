@@ -93,6 +93,13 @@ export interface KdsvcBusinessResult {
   } & Record<string, unknown>;
 }
 
+/** 默认单请求超时秒数：真实站点写操作（如出库单删除的库存回滚）可能超过它，可配 timeout 调大 */
+export const DEFAULT_TIMEOUT_SECONDS = 30;
+
+function requestTimeoutMs(profile: Profile): number {
+  return (profile.timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1000;
+}
+
 /** 每次命令执行即登即用（无状态），成功返回会话 Cookie */
 export async function login(profile: Profile): Promise<string> {
   const body =
@@ -109,15 +116,19 @@ export async function login(profile: Profile): Promise<string> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(buildEnvelope(body)),
       // 薄封装的动机之一：完全可控的超时，避免挂到 undici 默认的 5 分钟
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(requestTimeoutMs(profile)),
     });
   } catch (e) {
     const cause = e instanceof Error ? e : new Error(String(e));
     if (cause.name === 'TimeoutError' || cause.name === 'AbortError') {
       throw new KdsvcError(
         EXIT_CODES.NETWORK_ERROR,
-        `金蝶服务器 30 秒内未响应: ${profile['server-url']}`,
-        ['检查内网连通性（是否需要 VPN）', '用浏览器打开 server-url 确认可达'],
+        `金蝶服务器 ${requestTimeoutMs(profile) / 1000} 秒内未响应: ${profile['server-url']}`,
+        [
+          '检查内网连通性（是否需要 VPN）',
+          '用浏览器打开 server-url 确认可达',
+          `慢站点可在 profile 配置 timeout 或用 --timeout 调大（当前 ${requestTimeoutMs(profile) / 1000} 秒）`,
+        ],
       );
     }
     throw new KdsvcError(
@@ -190,15 +201,18 @@ export async function callService(
         Cookie: session,
       },
       body: JSON.stringify(buildEnvelope(params)),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(requestTimeoutMs(profile)),
     });
   } catch (e) {
     const cause = e instanceof Error ? e : new Error(String(e));
     if (cause.name === 'TimeoutError' || cause.name === 'AbortError') {
       throw new KdsvcError(
         EXIT_CODES.NETWORK_ERROR,
-        `金蝶服务器 30 秒内未响应: ${profile['server-url']}`,
-        ['检查内网连通性（是否需要 VPN）'],
+        `金蝶服务器 ${requestTimeoutMs(profile) / 1000} 秒内未响应: ${profile['server-url']}`,
+        [
+          '检查内网连通性（是否需要 VPN）',
+          `慢站点可在 profile 配置 timeout 或用 --timeout 调大（当前 ${requestTimeoutMs(profile) / 1000} 秒；出库单删除涉及库存回滚常超 30 秒）`,
+        ],
       );
     }
     throw new KdsvcError(

@@ -108,6 +108,7 @@ program.name('kd').description('agent 优先的金蝶云星空 K3Cloud CLI').ver
 program
   .option('--profile <name>', '选择配置 profile（默认取 default-profile）')
   .option('--mode <mode>', '临时覆盖访问模式：readonly | readwrite')
+  .option('--timeout <seconds>', '单请求超时秒数（默认 30；慢站点调大，如出库单删除涉及库存回滚）')
   .option('--pretty', '美化输出（人类可读）')
   .hook('preAction', () => {
     pretty = program.opts().pretty === true;
@@ -115,7 +116,18 @@ program
     if (mode && mode !== 'readonly' && mode !== 'readwrite') {
       fail('global', EXIT_CODES.PARAM_ERROR, `未知 --mode: ${mode}（支持 readonly | readwrite）`);
     }
+    const timeoutRaw = program.opts().timeout as string | undefined;
+    if (timeoutRaw !== undefined) {
+      const n = Number(timeoutRaw);
+      if (!Number.isInteger(n) || n <= 0) {
+        fail('global', EXIT_CODES.PARAM_ERROR, `--timeout 必须是正整数秒，收到: ${timeoutRaw}`);
+      }
+      timeoutOverride = n;
+    }
   });
+
+/** --timeout 显式覆盖（优先级最高，其次 KD_TIMEOUT/profile timeout/默认 30） */
+let timeoutOverride: number | undefined;
 
 function globalOpts() {
   return program.opts<{ profile?: string; mode?: string; pretty?: boolean }>();
@@ -218,6 +230,7 @@ config
     run('config-test', async () => {
       const { name, profile } = resolveProfile(globalOpts().profile);
       if (globalOpts().mode) profile.mode = globalOpts().mode as AccessMode;
+      if (timeoutOverride !== undefined) profile.timeout = timeoutOverride;
       const started = Date.now();
       await login(profile);
       return {
@@ -367,6 +380,7 @@ program
 function writeProfile(): Profile {
   const { profile } = resolveProfile(globalOpts().profile);
   if (globalOpts().mode) profile.mode = globalOpts().mode as AccessMode;
+  if (timeoutOverride !== undefined) profile.timeout = timeoutOverride;
   return profile;
 }
 

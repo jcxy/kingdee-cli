@@ -93,6 +93,46 @@ describe('CLI 进程边界：基础', () => {
   });
 });
 
+describe('CLI 进程边界：超时控制（--timeout / profile timeout / KD_TIMEOUT）', () => {
+  it('profile timeout=1 + stub 慢响应 3s：exit 5 且报错含实际秒数', async () => {
+    await writeConfig({ timeout: 1 });
+    stub.slowMs = 3000;
+    const r = await runCli(['count', '--form', 'sales-order'], baseEnv());
+    expect(r.code).toBe(5);
+    expect(r.json.error.message).toContain('1 秒内未响应');
+    expect(r.json.error.hints.join('\n')).toContain('timeout');
+  }, 20000);
+
+  it('--timeout CLI 覆盖：调大到 10 秒后 3s 慢响应成功', async () => {
+    await writeConfig({ timeout: 1 });
+    stub.slowMs = 3000;
+    const r = await runCli(['--timeout', '10', 'count', '--form', 'sales-order'], baseEnv());
+    expect(r.code).toBe(0);
+    expect(r.json.ok).toBe(true);
+  }, 20000);
+
+  it('KD_TIMEOUT 环境变量：同样生效', async () => {
+    await writeConfig({ timeout: 1 });
+    stub.slowMs = 3000;
+    const r = await runCli(['count', '--form', 'sales-order'], { ...baseEnv(), KD_TIMEOUT: '10' });
+    expect(r.code).toBe(0);
+  }, 20000);
+
+  it('profile timeout 非法（0）：exit 2 且提示正整数秒', async () => {
+    await writeConfig({ timeout: 0 });
+    const r = await runCli(['count', '--form', 'sales-order'], baseEnv());
+    expect(r.code).toBe(2);
+    expect(r.json.error.message).toContain('timeout');
+  });
+
+  it('--timeout 非法（abc）：exit 2 且提示', async () => {
+    await writeConfig();
+    const r = await runCli(['--timeout', 'abc', 'count', '--form', 'sales-order'], baseEnv());
+    expect(r.code).toBe(2);
+    expect(r.json.error.message).toContain('--timeout');
+  });
+});
+
 describe('CLI 进程边界：config', () => {
   it('引用不存在的 profile：明确报"profile 不存在"并列出现有名称（校准反馈修正）', async () => {
     await writeConfig();
